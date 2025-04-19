@@ -10,13 +10,16 @@ import net.minecraft.util.StringIdentifiable;
 import wraith.fwaystones.FabricWaystones;
 import wraith.fwaystones.util.TeleportSources;
 
-public record TeleportToWaystonePacket(String waystone, String source) implements CustomPayload {
+public record TeleportToWaystonePacket(String originWaystone, String destinationWaystone, String source) implements CustomPayload {
     public static final Id PACKET_ID = new Id<>(Identifier.of(FabricWaystones.MOD_ID, "teleport_to_waystone"));
     public static final Codec<TeleportToWaystonePacket> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.STRING.fieldOf("waystone").forGetter(TeleportToWaystonePacket::waystone),
+            Codec.STRING.fieldOf("originWaystone").forGetter(TeleportToWaystonePacket::originWaystone),
+            Codec.STRING.fieldOf("desinationWaystone").forGetter(TeleportToWaystonePacket::destinationWaystone),
             StringIdentifiable.EnumCodec.STRING.fieldOf("source").forGetter(TeleportToWaystonePacket::source)
     ).apply(instance, TeleportToWaystonePacket::new));
+
     public static final PacketCodec PACKET_CODEC = PacketCodecs.registryCodec(CODEC);
+
     public Id getId() {
         return PACKET_ID;
     }

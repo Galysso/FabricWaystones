@@ -152,11 +152,10 @@ public final class Utils {
         });
     }
 
-    public static boolean canTeleport(PlayerEntity player, String hash, TeleportSources source, boolean takeCost) {
+    public static boolean canTeleport(PlayerEntity player, String originHash, String hash, TeleportSources source, boolean takeCost) {
         FWConfigModel.CostType cost = FabricWaystones.CONFIG.teleportation_cost.cost_type();
         var waystone = FabricWaystones.WAYSTONE_STORAGE.getWaystoneData(hash);
         if (waystone == null) {
-            System.out.println("1");
             player.sendMessage(Text.translatable("fwaystones.no_teleport.invalid_waystone"), true);
             return false;
         }
@@ -178,7 +177,7 @@ public final class Utils {
         if (source == TeleportSources.LOCAL_VOID && FabricWaystones.CONFIG.free_local_void_teleport()) {
             return true;
         }
-        int amount = getCost(player.getPos(), Vec3d.ofCenter(waystone.way_getPos()), sourceDim, destDim);
+        int amount = getCostWrapper(player, originHash, hash);
         if (player.isCreative() || player.isSpectator()) {
             return true;
         }
@@ -356,14 +355,34 @@ public final class Utils {
         return null;
     }
 
-    public static int getTeleportCostItemFromWaystoneToWaystone(WaystoneBlockEntity origin, WaystoneBlockEntity destination) {
-        if (origin == null) {
-            return 10000;
+    public static int getCostWrapper(PlayerEntity player, String hashOrigin, String hashDestination) {
+        Vec3d originPos = null;
+        String originDim = null;
+        if (player != null) {
+            originPos = player.getPos();
+            originDim = getDimensionName(player.getWorld());
         }
-        if (destination == null) {
-            return 100;
+        if (hashOrigin != null && !hashOrigin.isEmpty()) {
+            var waystoneOrigin = FabricWaystones.WAYSTONE_STORAGE.getWaystoneData(hashOrigin);
+            if (waystoneOrigin != null) {
+                originPos = Vec3d.ofCenter(waystoneOrigin.way_getPos());
+                originDim = waystoneOrigin.getWorldName();
+            }
         }
-        return Utils.getCost(Vec3d.ofCenter(origin.way_getPos()), Vec3d.ofCenter(destination.way_getPos()), origin.getWorldName(), destination.getWorldName());
+        if (originPos == null) {
+            return 0; // Should not happen
+        }
+        if (hashDestination == null || hashDestination.isEmpty()) {
+            return 0; // Should not happen
+        }
+        var waystoneDestination = FabricWaystones.WAYSTONE_STORAGE.getWaystoneData(hashDestination);
+        if (waystoneDestination == null) {
+            return 0; // Should not happen
+        }
+        Vec3d destinationPos = Vec3d.ofCenter(waystoneDestination.way_getPos());
+        String destinationDim = waystoneDestination.getWorldName();
+
+        return Utils.getCost(originPos, destinationPos, originDim, destinationDim);
     }
 
     @Nullable

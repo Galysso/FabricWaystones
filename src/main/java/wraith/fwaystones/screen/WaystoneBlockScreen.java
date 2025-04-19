@@ -440,7 +440,7 @@ public class WaystoneBlockScreen extends UniversalWaystoneScreen {
     protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
         if (page == Page.WAYSTONES) {
             Text name = Text.literal(((WaystoneBlockScreenHandler) handler).getName()).formatted(Formatting.GRAY);
-            context.drawText(textRenderer, ((WaystoneBlockScreenHandler) handler).getName(), (234 - textRenderer.getWidth(name))/2, this.titleY, 4210752, false);
+            context.drawText(textRenderer, ((WaystoneBlockScreenHandler) handler).getName(), 3 + (150 - textRenderer.getWidth(name))/2, this.titleY, 4210752, false);
         }
     }
 

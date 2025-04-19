@@ -1,5 +1,6 @@
 package wraith.fwaystones.screen;
 
+import com.glisco.numismaticoverhaul.ModComponents;
 import com.glisco.numismaticoverhaul.item.NumismaticOverhaulItems;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
@@ -34,6 +35,7 @@ import wraith.fwaystones.util.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
 
@@ -185,19 +187,111 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         context.drawTexture(texture, x + 198, y + 31 + k, 234 + (this.shouldScroll() ? 0 : 11), 0, 11, 15);
         int n = this.scrollOffset + maxLineNumber;
         // TODO: Merge some of these
-        this.renderWaystoneBackground(context, mouseX, mouseY, this.x + 36, this.y + 30, n);
+        this.renderNumismaticBalance(context, this.x + 154, this.y + 5);
         this.renderForgetButtons(context, mouseX, mouseY, this.x + 24, this.y + 36);
         renderButtons(context, mouseX, mouseY);
         this.renderCostItem(context, this.x + 23, this.y + 127);
-        this.renderWaystoneNames(context, this.x + 36, this.y + 31, n);
-        if (FabricWaystones.CONFIG.teleportation_cost.cost_type().equals(FWConfigModel.CostType.NUMISMATIC)) {
-            this.renderWaystoneCosts(context, this.x + 194, this.y + 31, n);
-        }
         this.renderWaystoneTooltips(context, mouseX, mouseY, this.x + 36, this.y + 30, n);
-        //this.renderWaystoneAmount(context, this.x + 10, this.y + 160);
+        this.renderLines(context, mouseX, mouseY, this.x + 36, this.y + 30, n);
         this.searchField.render(context, mouseX, mouseY, delta);
         this.renderForgetTooltips(context, mouseX, mouseY, this.x + 24, this.y + 36);
         this.renderButtonTooltips(context, mouseX, mouseY);
+        this.renderBalanceTooltip(context, mouseX, mouseY);
+    }
+
+    protected void renderLines(DrawContext context, int mouseX, int mouseY, int x, int y, int m) {
+        if (FabricWaystones.WAYSTONE_STORAGE == null)
+            return;
+
+        // Get waystones
+        ArrayList<String> waystones = getDiscoveredWaystones();
+
+        // Get origin hash
+        String originHash = "";
+        if (this.handler instanceof WaystoneBlockScreenHandler) {
+            originHash = ((WaystoneBlockScreenHandler) this.handler).getWaystone();
+        }
+
+        // Check whether Numismatic coins should be used
+        final boolean useNumismatic = FabricWaystones.CONFIG.teleportation_cost.cost_type().equals(FWConfigModel.CostType.NUMISMATIC);
+
+        // Get player balance
+        long playerBalance = Long.MAX_VALUE;
+        if (useNumismatic) {
+            playerBalance = ModComponents.CURRENCY.get(inventory.player).getValue();
+        }
+
+        // Render lines
+        for (int n = this.scrollOffset; n < m && n < getDiscoveredCount(); ++n) {
+            // Get the destination
+            var destinationHash = waystones.get(n);
+
+            // Compute the cost
+            int cost = Utils.getCostWrapper(client.player, originHash, destinationHash);
+
+            // Base rendering positions
+            int o = n - this.scrollOffset;
+            int r = y + o * 18 + 2;
+            int s = this.backgroundHeight;
+
+            // Check whether the player has the balance
+            final boolean playerHasBalance = playerBalance >= cost;
+
+            // Display background
+            if (Objects.equals(originHash, destinationHash) || !playerHasBalance) {
+                s += 18;
+            } else if (mouseX >= x && mouseY >= r && mouseX < x + 158 && mouseY < r + 18) {
+                s += mouseClicked ? 18 : 36;
+            }
+            context.drawTexture(texture, x, r - 1, 0, s, 158, 18);
+
+            // Display name
+            String name = FabricWaystones.WAYSTONE_STORAGE.getName(waystones.get(n));
+            context.drawText(textRenderer, name, x + 4, r + 4, 0x161616, false);
+
+            // Skip cost if the waystone is the same as the origin or if Numismatic is not used
+            if (!useNumismatic || Objects.equals(originHash, destinationHash)) {
+                continue; // Skip if the waystone is the same as the origin
+            }
+
+            // Get the cost color based on the player's balance
+            var colorCostDigits = playerHasBalance ? 0xEEEEEE : 0xE06666;
+
+            // Get the number of each coins
+            NumismaticUtils.CoinsTuple coins = NumismaticUtils.convertCostToCoins(cost);
+
+            // Base rendering positions for costs
+            int costHorizontalOffset = 138;
+            int costVerticalOffset = -1;
+            int costDigitsHorizontalOffset = 5;
+            int costDigitsVerticalOffset = 9;
+
+            // Display costs
+            if (coins.goldCoins > 0) {
+                ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
+                context.drawItem(goldStack, x + costHorizontalOffset - 2*18, r + costVerticalOffset);
+                context.getMatrices().push();
+                context.getMatrices().translate(0.0, 0.0, 200.0);
+                context.drawText(this.textRenderer, Text.literal(Long.toString(coins.goldCoins)), x + costHorizontalOffset + costDigitsHorizontalOffset - 2*18, r + costVerticalOffset + costDigitsVerticalOffset, colorCostDigits, false);
+                context.getMatrices().pop();
+            }
+            if (coins.silverCoins > 0) {
+                ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, (int) coins.silverCoins);
+                context.drawItem(silverStack, x + costHorizontalOffset - 18, r + costVerticalOffset);
+                context.getMatrices().push();
+                context.getMatrices().translate(0.0, 0.0, 200.0);
+                context.drawText(this.textRenderer, Text.literal(Long.toString(coins.silverCoins)), x + costHorizontalOffset + costDigitsHorizontalOffset - 18, r + costVerticalOffset + costDigitsVerticalOffset, colorCostDigits, false);
+                context.getMatrices().pop();
+            }
+            if (coins.bronzeCoins > 0) {
+                ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, (int) coins.bronzeCoins);
+                context.drawItem(bronzeStack, x + costHorizontalOffset, r + costVerticalOffset);
+                context.getMatrices().push();
+                context.getMatrices().translate(0.0, 0.0, 200.0);
+                context.drawText(this.textRenderer, Text.literal(Long.toString(coins.bronzeCoins)), x + costHorizontalOffset + costDigitsHorizontalOffset, r + costVerticalOffset + costDigitsVerticalOffset, colorCostDigits, false);
+                context.getMatrices().pop();
+            }
+        }
     }
 
     protected void renderButtonTooltips(DrawContext context, int mouseX, int mouseY) {
@@ -207,6 +301,12 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
             }
 
             context.drawTooltip(textRenderer, button.tooltip(), mouseX, mouseY);
+        }
+    }
+
+    protected void renderBalanceTooltip(DrawContext context, int mouseX, int mouseY) {
+        if (mouseX >= this.x + 153 && mouseX <= this.x + 209 && mouseY >= this.y + 5 && mouseY <= this.y + 20) {
+            context.drawTooltip(textRenderer, Text.translatable("numismatic.current_balance"), mouseX, mouseY);
         }
     }
 
@@ -308,7 +408,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
 
     @Override
     protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-        context.drawText(textRenderer, this.title, (234 - textRenderer.getWidth(this.title))/2, this.titleY, 4210752, false);
+        context.drawText(textRenderer, this.title, 3 + (150 - textRenderer.getWidth(this.title))/2, this.titleY, 4210752, false);
     }
 
 
@@ -349,6 +449,54 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         }
     }
 
+    /*
+    int costHorizontalOffset = 138;
+            int costVerticalOffset = -1;
+            int costDigitsHorizontalOffset = 5;
+            int costDigitsVerticalOffset = 9;
+
+            // Display costs
+            if (coins.goldCoins > 0) {
+                ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
+                context.drawItem(goldStack, x + costHorizontalOffset - 2*18, r + costVerticalOffset);
+                context.getMatrices().push();
+                context.getMatrices().translate(0.0, 0.0, 200.0);
+                context.drawText(this.textRenderer, Text.literal(Long.toString(coins.goldCoins)), x + costHorizontalOffset + costDigitsHorizontalOffset - 2*18, r + costVerticalOffset + costDigitsVerticalOffset, colorCostDigits, false);
+                context.getMatrices().pop();
+            }
+     */
+
+    protected void renderNumismaticBalance(DrawContext context, int x, int y) {
+        int costDigitsHorizontalOffset = 5;
+        int costDigitsVerticalOffset = 9;
+        long balance = ModComponents.CURRENCY.get(inventory.player).getValue();
+        NumismaticUtils.CoinsTuple coins = NumismaticUtils.convertCostToCoins(balance);
+        if (coins.goldCoins > 0) {
+            ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
+            context.drawItem(goldStack, x, y);
+            context.getMatrices().push();
+            context.getMatrices().translate(0.0, 0.0, 200.0);
+            context.drawText(this.textRenderer, Text.literal(Long.toString(coins.goldCoins)), x + costDigitsHorizontalOffset, y + costDigitsVerticalOffset, 0xEEEEEE, false);
+            context.getMatrices().pop();
+        }
+        if (coins.silverCoins > 0) {
+            ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, (int) coins.silverCoins);
+            context.drawItem(silverStack, x + 18, y);
+            context.getMatrices().push();
+            context.getMatrices().translate(0.0, 0.0, 200.0);
+            context.drawText(this.textRenderer, Text.literal(Long.toString(coins.silverCoins)), x + costDigitsHorizontalOffset + 18, y + costDigitsVerticalOffset, 0xEEEEEE, false);
+            context.getMatrices().pop();
+        }
+        if (coins.bronzeCoins > 0) {
+            ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, (int) coins.bronzeCoins);
+            context.drawItem(bronzeStack, x + 2*18, y);
+            context.getMatrices().push();
+            context.getMatrices().translate(0.0, 0.0, 200.0);
+            context.drawText(this.textRenderer, Text.literal(Long.toString(coins.bronzeCoins)), x + costDigitsHorizontalOffset + 2*18, y + costDigitsVerticalOffset, 0xEEEEEE, false);
+            context.getMatrices().pop();
+        }
+    }
+
     protected void renderWaystoneTooltips(DrawContext context, int mouseX, int mouseY, int x, int y, int m) {
         ArrayList<String> waystones = getDiscoveredWaystones();
         for (int n = this.scrollOffset; n < m && n < getDiscoveredCount(); ++n) {
@@ -361,11 +509,14 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
             if (waystoneData == null) {
                 continue;
             }
-            var startDim = Utils.getDimensionName(client.player.getWorld());
-            var endDim = waystoneData.getWorldName();
             List<Text> tooltipContents = new ArrayList<>();
             if (!FabricWaystones.CONFIG.teleportation_cost.cost_type().equals(FWConfigModel.CostType.NUMISMATIC)) {
-                var cost = Utils.getCost(Vec3d.ofCenter(waystoneData.way_getPos()), client.player.getPos(), startDim, endDim);
+                //var cost = Utils.getCost(Vec3d.ofCenter(waystoneData.way_getPos()), client.player.getPos(), startDim, endDim);
+                String hashOrigin = null;
+                if (this.handler instanceof WaystoneBlockScreenHandler waystoneBlockScreenHandler) {
+                    hashOrigin = waystoneBlockScreenHandler.getWaystone();
+                }
+                var cost = Utils.getCostWrapper(this.inventory.player, hashOrigin, waystoneData.getHash());
                 tooltipContents.add(Text.translatable("fwaystones.gui.cost_tooltip", cost == 0 ? Text.translatable("fwaystones.cost.free").getString() : cost));
                 if (hasShiftDown()) {
                     tooltipContents.add(Text.translatable("fwaystones.gui.dimension_tooltip", waystoneData.getWorldName()));
@@ -397,43 +548,34 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         if (FabricWaystones.WAYSTONE_STORAGE == null)
             return;
 
-        WaystoneBlockEntity thisWaystone = null;
+        String originHash = "";
         if (this.handler instanceof WaystoneBlockScreenHandler) {
-            thisWaystone = FabricWaystones.WAYSTONE_STORAGE.getWaystoneEntity(((WaystoneBlockScreenHandler) this.handler).getWaystone());
+            originHash = ((WaystoneBlockScreenHandler) this.handler).getWaystone();
         }
         ArrayList<String> waystones = getDiscoveredWaystones();
         for (int n = this.scrollOffset; n < m && n < waystones.size(); ++n) {
             int o = n - this.scrollOffset;
-            int r = y + o * 18 + 2;
+            int r = y + o * 18 + 3;
 
-            var otherWaystoneData = FabricWaystones.WAYSTONE_STORAGE.getWaystoneData(waystones.get(n));
-            var startDim = Utils.getDimensionName(client.player.getWorld());
-            var endDim = otherWaystoneData.getWorldName();
+            var destinationHash = waystones.get(n);
 
-            int cost;
-            if (thisWaystone != null) {
-                if (thisWaystone.equals(otherWaystoneData.getEntity())) {
-                    continue;
-                }
-                //cost = Utils.getTeleportCostItemFromWaystoneToWaystone(thisWaystone, otherWaystoneData.getEntity());
-                cost = Utils.getCost(Vec3d.ofCenter(thisWaystone.getPos()), Vec3d.ofCenter(otherWaystoneData.way_getPos()), startDim, endDim);
-            } else {
-                cost = Utils.getCost(Vec3d.ofCenter(otherWaystoneData.way_getPos()), client.player.getPos(), startDim, endDim);
+            if (Objects.equals(originHash, destinationHash)) {
+                continue;
             }
-
+            int cost = Utils.getCostWrapper(client.player, originHash, destinationHash);
             NumismaticUtils.CoinsTuple coins = NumismaticUtils.convertCostToCoins(cost);
             if (coins.goldCoins > 0) {
-                ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, coins.goldCoins);
+                ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
                 context.drawItem(goldStack, x - 20 - 2*18, r - 3);
                 context.drawItemInSlot(this.textRenderer, goldStack, x - 20 - 2*18, r - 3);
             }
             if (coins.silverCoins > 0) {
-                ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, coins.silverCoins);
+                ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, (int) coins.silverCoins);
                 context.drawItem(silverStack, x - 20 - 18, r - 3);
                 context.drawItemInSlot(this.textRenderer, silverStack, x - 20 - 18, r - 3);
             }
             if (coins.bronzeCoins > 0) {
-                ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, coins.bronzeCoins);
+                ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, (int) coins.bronzeCoins);
                 context.drawItem(bronzeStack, x - 20, r - 3);
                 context.drawItemInSlot(this.textRenderer, bronzeStack, x - 20, r - 3);
             }
@@ -467,9 +609,9 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
 
     protected boolean tryClick(double mouseX, double mouseY) {
         int forgetButtonX = this.x + 24;
-        int forgetButtonY = this.y + 45;
+        int forgetButtonY = this.y + 36;
         int waystoneButtonX = this.x + 36;
-        int waystoneButtonY = this.y + 40;
+        int waystoneButtonY = this.y + 31;
         int adjustedScrollOffset = this.scrollOffset + maxLineNumber;
 
         int n = getDiscoveredCount();

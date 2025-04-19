@@ -40,6 +40,7 @@ import wraith.fwaystones.screen.WaystoneBlockScreenHandler;
 import wraith.fwaystones.util.FWConfigModel;
 import wraith.fwaystones.util.TeleportSources;
 import wraith.fwaystones.util.Utils;
+import wraith.fwaystones.util.WaystoneStorage;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -325,10 +326,10 @@ public class WaystoneBlockEntity extends LootableContainerBlockEntity implements
     }
 
     public boolean teleportPlayer(PlayerEntity player, boolean takeCost) {
-        return teleportPlayer(player, takeCost, null);
+        return teleportPlayer("", player, takeCost, null);
     }
 
-    public boolean teleportPlayer(PlayerEntity player, boolean takeCost, TeleportSources source) {
+    public boolean teleportPlayer(String originHash, PlayerEntity player, boolean takeCost, TeleportSources source) {
         if (!(player instanceof ServerPlayerEntity playerEntity)) {
             return false;
         }
@@ -375,7 +376,8 @@ public class WaystoneBlockEntity extends LootableContainerBlockEntity implements
         if (source == null) {
             return false;
         }
-        var teleported = doTeleport(playerEntity, (ServerWorld) world, target, source, takeCost);
+
+        var teleported = doTeleport(originHash, playerEntity, (ServerWorld) world, target, source, takeCost);
         if (!teleported) {
             return false;
         }
@@ -393,7 +395,7 @@ public class WaystoneBlockEntity extends LootableContainerBlockEntity implements
         return true;
     }
 
-    private boolean doTeleport(ServerPlayerEntity player, ServerWorld world, TeleportTarget target, TeleportSources source, boolean takeCost) {
+    private boolean doTeleport(String originHash, ServerPlayerEntity player, ServerWorld world, TeleportTarget target, TeleportSources source, boolean takeCost) {
         var playerAccess = (PlayerEntityMixinAccess) player;
         var cooldown = playerAccess.fabricWaystones$getTeleportCooldown();
         if (source != TeleportSources.VOID_TOTEM && cooldown > 0) {
@@ -407,7 +409,8 @@ public class WaystoneBlockEntity extends LootableContainerBlockEntity implements
             ), false);
             return false;
         }
-        if (!Utils.canTeleport(player, hash, source, takeCost)) {
+
+        if (!Utils.canTeleport(player, originHash, hash, source, takeCost)) {
             return false;
         }
         var cooldowns = FabricWaystones.CONFIG.teleportation_cooldown;

@@ -68,7 +68,7 @@ public class LocalVoidItem extends Item {
                 WaystoneBlockEntity waystone = FabricWaystones.WAYSTONE_STORAGE.getWaystoneEntity(hash);
                 if (waystone == null) {
                     tag.remove(FabricWaystones.MOD_ID);
-                } else if (waystone.teleportPlayer(user, !FabricWaystones.CONFIG.free_local_void_teleport(), TeleportSources.LOCAL_VOID) && !user.isCreative() && FabricWaystones.CONFIG.consume_local_void_on_use()) {
+                } else if (waystone.teleportPlayer("", user, !FabricWaystones.CONFIG.free_local_void_teleport(), TeleportSources.LOCAL_VOID) && !user.isCreative() && FabricWaystones.CONFIG.consume_local_void_on_use()) {
                     stack.decrement(1);
                     return TypedActionResult.consume(stack);
                 }

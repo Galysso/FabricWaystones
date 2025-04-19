@@ -104,16 +104,16 @@ public final class WaystonePacketHandler {
 
     public static void handleTeleportToWaystonePacket(TeleportToWaystonePacket payload, ServerPlayNetworking.Context context) {
         context.server().execute(() -> {
-            if (FabricWaystones.WAYSTONE_STORAGE.removeIfInvalid(payload.waystone())) {
+            if (FabricWaystones.WAYSTONE_STORAGE.removeIfInvalid(payload.destinationWaystone())) {
                 return;
             }
 
-            var waystone = FabricWaystones.WAYSTONE_STORAGE.getWaystoneEntity(payload.waystone());
+            var waystone = FabricWaystones.WAYSTONE_STORAGE.getWaystoneEntity(payload.destinationWaystone());
             if (waystone.getWorld() != null && !(waystone.getWorld().getBlockState(waystone.getPos()).getBlock() instanceof WaystoneBlock)) {
-                FabricWaystones.WAYSTONE_STORAGE.removeWaystone(payload.waystone());
+                FabricWaystones.WAYSTONE_STORAGE.removeWaystone(payload.destinationWaystone());
                 waystone.getWorld().removeBlockEntity(waystone.getPos());
             } else {
-                waystone.teleportPlayer(context.player(), true, payload.getSource());
+                waystone.teleportPlayer(payload.originWaystone(), context.player(), true, payload.getSource());
             }
         });
     }

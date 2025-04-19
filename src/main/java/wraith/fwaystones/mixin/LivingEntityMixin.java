@@ -78,7 +78,7 @@ public abstract class LivingEntityMixin {
                 var waystone = FabricWaystones.WAYSTONE_STORAGE.getWaystoneEntity(hash);
                 if (waystone != null) {
                     player.fallDistance = 0;
-                    waystone.teleportPlayer(player, false, TeleportSources.VOID_TOTEM);
+                    waystone.teleportPlayer("", player, false, TeleportSources.VOID_TOTEM);
                     teleported = true;
                 }
             }

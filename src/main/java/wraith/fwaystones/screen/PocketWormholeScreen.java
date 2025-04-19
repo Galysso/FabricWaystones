@@ -25,7 +25,7 @@ public class PocketWormholeScreen extends UniversalWaystoneScreen {
 
     @Override
     protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-        context.drawText(textRenderer, this.title, (234 - textRenderer.getWidth(this.title))/2, this.titleY, 0x7E3483, false);
+        context.drawText(textRenderer, this.title, 3 + (150 - textRenderer.getWidth(this.title))/2, this.titleY, 0x7E3483, false);
     }
 
 }

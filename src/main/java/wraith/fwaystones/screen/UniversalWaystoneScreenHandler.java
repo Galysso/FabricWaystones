@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import wraith.fwaystones.FabricWaystones;
 import wraith.fwaystones.access.PlayerAccess;
 import wraith.fwaystones.access.PlayerEntityMixinAccess;
+import wraith.fwaystones.access.WaystoneValue;
 import wraith.fwaystones.mixin.ClientPlayerEntityAccessor;
 import wraith.fwaystones.mixin.ServerPlayerEntityAccessor;
 import wraith.fwaystones.packets.ForgetWaystonePacket;
@@ -99,8 +100,12 @@ public abstract class UniversalWaystoneScreenHandler extends ScreenHandler {
             ClientPlayNetworking.send(new ForgetWaystonePacket(waystoneHash));
         } else {
             TeleportSources source = getTeleportSource(player);
-            if (Utils.canTeleport(player, waystoneHash, source, false)) {
-                ClientPlayNetworking.send(new TeleportToWaystonePacket(waystoneHash, source.name()));
+            String sourceHash = "";
+            if (this instanceof WaystoneBlockScreenHandler waystoneBlockScreenHandler) {
+                sourceHash = waystoneBlockScreenHandler.getWaystone();
+            }
+            if (Utils.canTeleport(player, sourceHash, waystoneHash, source, false)) {
+                ClientPlayNetworking.send(new TeleportToWaystonePacket(sourceHash, waystoneHash, source.name()));
             }
             closeScreen();
         }
