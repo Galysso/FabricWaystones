@@ -1,5 +1,6 @@
 package wraith.fwaystones.util;
 
+import com.glisco.numismaticoverhaul.ModComponents;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
@@ -19,6 +20,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import wraith.fwaystones.FabricWaystones;
+import wraith.fwaystones.block.WaystoneBlockEntity;
 import wraith.fwaystones.mixin.StructurePoolAccessor;
 
 import java.nio.charset.StandardCharsets;
@@ -154,6 +156,7 @@ public final class Utils {
         FWConfigModel.CostType cost = FabricWaystones.CONFIG.teleportation_cost.cost_type();
         var waystone = FabricWaystones.WAYSTONE_STORAGE.getWaystoneData(hash);
         if (waystone == null) {
+            System.out.println("1");
             player.sendMessage(Text.translatable("fwaystones.no_teleport.invalid_waystone"), true);
             return false;
         }
@@ -180,6 +183,17 @@ public final class Utils {
             return true;
         }
         switch (cost) {
+            case NUMISMATIC -> {
+                if (amount <= ModComponents.CURRENCY.get(player).getValue()) {
+                    if (takeCost) {
+                        ModComponents.CURRENCY.get(player).modify(-amount);
+                    }
+                    return true;
+                } else {
+                    player.sendMessage(Text.translatable("fwaystones.no_teleport.numismatic"), true);
+                    return false;
+                }
+            }
             case HEALTH -> {
                 if (player.getHealth() + player.getAbsorptionAmount() <= amount) {
                     player.sendMessage(Text.translatable("fwaystones.no_teleport.health"), true);
@@ -340,6 +354,16 @@ public final class Utils {
             return (item.length == 2) ? Identifier.of(item[0], item[1]) : Identifier.of(item[0]);
         }
         return null;
+    }
+
+    public static int getTeleportCostItemFromWaystoneToWaystone(WaystoneBlockEntity origin, WaystoneBlockEntity destination) {
+        if (origin == null) {
+            return 10000;
+        }
+        if (destination == null) {
+            return 100;
+        }
+        return Utils.getCost(Vec3d.ofCenter(origin.way_getPos()), Vec3d.ofCenter(destination.way_getPos()), origin.getWorldName(), destination.getWorldName());
     }
 
     @Nullable

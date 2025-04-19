@@ -97,11 +97,11 @@ public class WaystoneBlockScreenHandler extends UniversalWaystoneScreenHandler {
         return this.hash;
     }
 
-    public void toggleGlobal() {
+    public void toggleGlobal(PlayerEntity player) {
         if (!isClient) {
             return;
         }
-        ClientPlayNetworking.send(new ToggleGlobalWaystonePacket(this.owner, this.hash));
+        ClientPlayNetworking.send(new ToggleGlobalWaystonePacket(player.getUuid(), this.hash));
         this.isGlobal = !this.isGlobal;
     }
 

@@ -37,6 +37,7 @@ import wraith.fwaystones.access.WaystoneValue;
 import wraith.fwaystones.item.AbyssWatcherItem;
 import wraith.fwaystones.registry.BlockEntityRegistry;
 import wraith.fwaystones.screen.WaystoneBlockScreenHandler;
+import wraith.fwaystones.util.FWConfigModel;
 import wraith.fwaystones.util.TeleportSources;
 import wraith.fwaystones.util.Utils;
 

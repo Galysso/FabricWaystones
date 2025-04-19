@@ -10,6 +10,7 @@ import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.text.Text;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.NotNull;
 import wraith.fwaystones.FabricWaystones;
 import wraith.fwaystones.access.PlayerAccess;
@@ -84,22 +85,22 @@ public abstract class UniversalWaystoneScreenHandler extends ScreenHandler {
             return false;
         }
 
-        String waystone = this.filteredWaystones.get(waystoneID);
-        if (waystone == null) {
+        String waystoneHash = this.filteredWaystones.get(waystoneID);
+        if (waystoneHash == null) {
             return false;
         }
 
         if (id % 2 != 0) {
-            this.sortedWaystones.remove(waystone);
-            this.filteredWaystones.remove(waystone);
-            onForget(waystone);
-            ((PlayerEntityMixinAccess) player).fabricWaystones$forgetWaystone(waystone);
+            this.sortedWaystones.remove(waystoneHash);
+            this.filteredWaystones.remove(waystoneHash);
+            onForget(waystoneHash);
+            ((PlayerEntityMixinAccess) player).fabricWaystones$forgetWaystone(waystoneHash);
             updateWaystones(player);
-            ClientPlayNetworking.send(new ForgetWaystonePacket(waystone));
+            ClientPlayNetworking.send(new ForgetWaystonePacket(waystoneHash));
         } else {
             TeleportSources source = getTeleportSource(player);
-            if (Utils.canTeleport(player, waystone, source, false)) {
-                ClientPlayNetworking.send(new TeleportToWaystonePacket(waystone, source.name()));
+            if (Utils.canTeleport(player, waystoneHash, source, false)) {
+                ClientPlayNetworking.send(new TeleportToWaystonePacket(waystoneHash, source.name()));
             }
             closeScreen();
         }

@@ -169,5 +169,6 @@
   "text.config.fwaystones/config.option.teleportation_cost.cost_type.value.level": "Level(s)",
   "text.config.fwaystones/config.option.teleportation_cost.cost_type.value.experience": "Experience",
   "text.config.fwaystones/config.option.teleportation_cost.cost_type.value.item": "Item",
-  "text.config.fwaystones/config.option.teleportation_cost.cost_type.value.none": "Free"
+  "text.config.fwaystones/config.option.teleportation_cost.cost_type.value.none": "Free",
+  "fwaystones.no_teleport.numismatic": "You do not have enough money to travel"
 }

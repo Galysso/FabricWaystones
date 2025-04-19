@@ -98,12 +98,13 @@ public final class FWConfigModel {
         LEVEL,
         EXPERIENCE,
         ITEM,
+        NUMISMATIC,
         NONE
     }
 
     public static class CostSettings {
 
-        public CostType cost_type = CostType.LEVEL;
+        public CostType cost_type = CostType.NUMISMATIC;
         public String cost_item = "minecraft:ender_pearl";
         public int base_cost = 1;
         public float cost_per_block_distance = 0F;

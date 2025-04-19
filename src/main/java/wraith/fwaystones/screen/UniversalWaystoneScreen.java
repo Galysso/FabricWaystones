@@ -1,5 +1,6 @@
 package wraith.fwaystones.screen;
 
+import com.glisco.numismaticoverhaul.item.NumismaticOverhaulItems;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -18,14 +19,17 @@ import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import wraith.fwaystones.FabricWaystones;
 import wraith.fwaystones.access.PlayerEntityMixinAccess;
+import wraith.fwaystones.block.WaystoneBlockEntity;
 import wraith.fwaystones.packets.SyncPlayerFromClientPacket;
 import wraith.fwaystones.packets.WaystoneGUISlotClickPacket;
 import wraith.fwaystones.util.FWConfigModel;
+import wraith.fwaystones.util.NumismaticUtils;
 import wraith.fwaystones.util.Utils;
 
 import java.util.ArrayList;
@@ -42,13 +46,14 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
     protected boolean ignoreTypedCharacter;
     protected boolean mousePressed;
     private TextFieldWidget searchField;
+    private final int maxLineNumber = 7;
 
     public UniversalWaystoneScreen(ScreenHandler handler, PlayerInventory inventory, Text title) {
         super(handler, inventory, title);
         this.inventory = inventory;
-        this.backgroundWidth = 177;
+        this.backgroundWidth = 234;
         this.backgroundHeight = 176;
-        buttons.add(new Button(140, 25, 13, 13, 225, 0) {
+        buttons.add(new Button(139, 16, 13, 13, 234, 120) {
             @Override
             public void onClick() {
                 if (!isVisible()) {
@@ -76,7 +81,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         });
 
         //Autoselect search lock
-        buttons.add(new ToggleableButton(24, 26, 8, 11, 177, 33, 185, 33) {
+        buttons.add(new ToggleableButton(24, 17, 8, 11, 234, 33, 242, 33) {
             @Override
             public void setup() {
                 this.toggled = ((PlayerEntityMixinAccess) inventory.player).fabricWaystones$autofocusWaystoneFields();
@@ -129,7 +134,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
     protected void init() {
         super.init();
 
-        this.searchField = new TextFieldWidget(textRenderer, this.x + 37, this.y + 27, 93, 10, Text.literal("")) {
+        this.searchField = new TextFieldWidget(textRenderer, this.x + 37, this.y + 18, 98, 10, Text.literal("")) {
             @Override
             public boolean mouseClicked(double mouseX, double mouseY, int button) {
                 boolean bl = mouseX >= (double) this.getX() && mouseX < (double) (this.getX() + this.width) && mouseY >= (double) this.getY() && mouseY < (double) (this.getY() + this.height);
@@ -176,19 +181,22 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
     protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
         context.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         context.drawTexture(texture, x, y, 0, 0, this.backgroundWidth, this.backgroundHeight);
-        int k = (int) (75.0F * this.scrollAmount);
-        context.drawTexture(texture, x + 141, y + 40 + k, 177 + (this.shouldScroll() ? 0 : 11), 0, 11, 15);
-        int n = this.scrollOffset + 5;
+        int k = (int) (111.0F * this.scrollAmount);
+        context.drawTexture(texture, x + 198, y + 31 + k, 234 + (this.shouldScroll() ? 0 : 11), 0, 11, 15);
+        int n = this.scrollOffset + maxLineNumber;
         // TODO: Merge some of these
-        this.renderWaystoneBackground(context, mouseX, mouseY, this.x + 36, this.y + 39, n);
-        this.renderForgetButtons(context, mouseX, mouseY, this.x + 24, this.y + 45);
+        this.renderWaystoneBackground(context, mouseX, mouseY, this.x + 36, this.y + 30, n);
+        this.renderForgetButtons(context, mouseX, mouseY, this.x + 24, this.y + 36);
         renderButtons(context, mouseX, mouseY);
-        this.renderCostItem(context, this.x + 23, this.y + 136);
-        this.renderWaystoneNames(context, this.x + 36, this.y + 40, n);
-        this.renderWaystoneTooltips(context, mouseX, mouseY, this.x + 36, this.y + 39, n);
-        this.renderWaystoneAmount(context, this.x + 10, this.y + 160);
+        this.renderCostItem(context, this.x + 23, this.y + 127);
+        this.renderWaystoneNames(context, this.x + 36, this.y + 31, n);
+        if (FabricWaystones.CONFIG.teleportation_cost.cost_type().equals(FWConfigModel.CostType.NUMISMATIC)) {
+            this.renderWaystoneCosts(context, this.x + 194, this.y + 31, n);
+        }
+        this.renderWaystoneTooltips(context, mouseX, mouseY, this.x + 36, this.y + 30, n);
+        //this.renderWaystoneAmount(context, this.x + 10, this.y + 160);
         this.searchField.render(context, mouseX, mouseY, delta);
-        this.renderForgetTooltips(context, mouseX, mouseY, this.x + 24, this.y + 45);
+        this.renderForgetTooltips(context, mouseX, mouseY, this.x + 24, this.y + 36);
         this.renderButtonTooltips(context, mouseX, mouseY);
     }
 
@@ -254,16 +262,19 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         var config = FabricWaystones.CONFIG.teleportation_cost;
         MutableText text;
         switch (config.cost_type()) {
+            case NUMISMATIC -> {
+                return;
+            }
             case HEALTH -> {
-                context.drawTexture(texture, x, y + 4, 186, 15, 9, 9);
+                context.drawTexture(texture, x, y + 4, 243, 15, 9, 9);
                 text = Text.translatable("fwaystones.cost.health");
             }
             case HUNGER -> {
-                context.drawTexture(texture, x, y + 4, 177, 24, 9, 9);
+                context.drawTexture(texture, x, y + 4, 234, 24, 9, 9);
                 text = Text.translatable("fwaystones.cost.hunger");
             }
             case EXPERIENCE -> {
-                context.drawTexture(texture, x, y + 4, 177, 15, 9, 9);
+                context.drawTexture(texture, x, y + 4, 234, 15, 9, 9);
                 text = Text.translatable("fwaystones.cost.xp");
             }
             case LEVEL -> {
@@ -276,7 +287,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
                 text = (MutableText) item.getName();
             }
             default -> {
-                context.drawTexture(texture, x, y + 4, 186, 24, 9, 9);
+                context.drawTexture(texture, x, y + 4, 243, 24, 9, 9);
                 text = Text.translatable("fwaystones.cost.free");
             }
         }
@@ -297,21 +308,21 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
 
     @Override
     protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-        context.drawText(textRenderer, this.title, this.titleX, this.titleY, 4210752, false);
+        context.drawText(textRenderer, this.title, (234 - textRenderer.getWidth(this.title))/2, this.titleY, 4210752, false);
     }
 
 
     protected void renderForgetButtons(DrawContext context, int mouseX, int mouseY, int x, int y) {
         int n = getDiscoveredCount();
-        for (int i = 0; i < 5; ++i) {
+        for (int i = 0; i < maxLineNumber; ++i) {
             int r = y + i * 18;
-            int v = 0;
+            int v = 159;
             if (i >= n) {
-                v = 8;
+                v += 8;
             } else if (mouseX >= x && mouseY >= r && mouseX < x + 8 && mouseY < r + 8) {
                 v += 8 * (mouseClicked ? 1 : 2);
             }
-            context.drawTexture(texture, x, r, 199, v, 8, 8);
+            context.drawTexture(texture, x, r, 234, v, 8, 8);
         }
     }
 
@@ -331,10 +342,10 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
             int o = n - this.scrollOffset;
             int r = y + o * 18 + 2;
             int s = this.backgroundHeight;
-            if (mouseX >= x && mouseY >= r && mouseX < x + 101 && mouseY < r + 18) {
+            if (mouseX >= x && mouseY >= r && mouseX < x + 158 && mouseY < r + 18) {
                 s += mouseClicked ? 18 : 36;
             }
-            context.drawTexture(texture, x, r - 1, 0, s, 101, 18);
+            context.drawTexture(texture, x, r - 1, 0, s, 158, 18);
         }
     }
 
@@ -343,7 +354,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         for (int n = this.scrollOffset; n < m && n < getDiscoveredCount(); ++n) {
             int o = n - this.scrollOffset;
             int r = y + o * 18 + 2;
-            if (mouseX < x || mouseY < r || mouseX >= x + 101 || mouseY >= r + 18) {
+            if (mouseX < x || mouseY < r || mouseX >= x + 158 || mouseY >= r + 18) {
                 continue;
             }
             var waystoneData = FabricWaystones.WAYSTONE_STORAGE.getWaystoneData(waystones.get(n));
@@ -353,12 +364,19 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
             var startDim = Utils.getDimensionName(client.player.getWorld());
             var endDim = waystoneData.getWorldName();
             List<Text> tooltipContents = new ArrayList<>();
-            var cost = Utils.getCost(Vec3d.ofCenter(waystoneData.way_getPos()), client.player.getPos(), startDim, endDim);
-            tooltipContents.add(Text.translatable("fwaystones.gui.cost_tooltip", cost == 0 ? Text.translatable("fwaystones.cost.free").getString() : cost));
-            if (hasShiftDown()) {
-                tooltipContents.add(Text.translatable("fwaystones.gui.dimension_tooltip", waystoneData.getWorldName()));
+            if (!FabricWaystones.CONFIG.teleportation_cost.cost_type().equals(FWConfigModel.CostType.NUMISMATIC)) {
+                var cost = Utils.getCost(Vec3d.ofCenter(waystoneData.way_getPos()), client.player.getPos(), startDim, endDim);
+                tooltipContents.add(Text.translatable("fwaystones.gui.cost_tooltip", cost == 0 ? Text.translatable("fwaystones.cost.free").getString() : cost));
+                if (hasShiftDown()) {
+                    tooltipContents.add(Text.translatable("fwaystones.gui.dimension_tooltip", waystoneData.getWorldName()));
+                }
+                context.drawTooltip(textRenderer, tooltipContents, mouseX, mouseY);
+            } else {
+                if (hasShiftDown()) {
+                    tooltipContents.add(Text.translatable("fwaystones.gui.dimension_tooltip", waystoneData.getWorldName()));
+                    context.drawTooltip(textRenderer, tooltipContents, mouseX, mouseY);
+                }
             }
-            context.drawTooltip(textRenderer, tooltipContents, mouseX, mouseY);
         }
     }
 
@@ -371,7 +389,54 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
             int r = y + o * 18 + 2;
 
             String name = FabricWaystones.WAYSTONE_STORAGE.getName(waystones.get(n));
-            context.drawText(textRenderer, name, x + 5, r - 1 + 5, 0x161616, false);
+            context.drawText(textRenderer, name, x + 4, r + 4, 0x161616, false);
+        }
+    }
+
+    protected void renderWaystoneCosts(DrawContext context, int x, int y, int m) {
+        if (FabricWaystones.WAYSTONE_STORAGE == null)
+            return;
+
+        WaystoneBlockEntity thisWaystone = null;
+        if (this.handler instanceof WaystoneBlockScreenHandler) {
+            thisWaystone = FabricWaystones.WAYSTONE_STORAGE.getWaystoneEntity(((WaystoneBlockScreenHandler) this.handler).getWaystone());
+        }
+        ArrayList<String> waystones = getDiscoveredWaystones();
+        for (int n = this.scrollOffset; n < m && n < waystones.size(); ++n) {
+            int o = n - this.scrollOffset;
+            int r = y + o * 18 + 2;
+
+            var otherWaystoneData = FabricWaystones.WAYSTONE_STORAGE.getWaystoneData(waystones.get(n));
+            var startDim = Utils.getDimensionName(client.player.getWorld());
+            var endDim = otherWaystoneData.getWorldName();
+
+            int cost;
+            if (thisWaystone != null) {
+                if (thisWaystone.equals(otherWaystoneData.getEntity())) {
+                    continue;
+                }
+                //cost = Utils.getTeleportCostItemFromWaystoneToWaystone(thisWaystone, otherWaystoneData.getEntity());
+                cost = Utils.getCost(Vec3d.ofCenter(thisWaystone.getPos()), Vec3d.ofCenter(otherWaystoneData.way_getPos()), startDim, endDim);
+            } else {
+                cost = Utils.getCost(Vec3d.ofCenter(otherWaystoneData.way_getPos()), client.player.getPos(), startDim, endDim);
+            }
+
+            NumismaticUtils.CoinsTuple coins = NumismaticUtils.convertCostToCoins(cost);
+            if (coins.goldCoins > 0) {
+                ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, coins.goldCoins);
+                context.drawItem(goldStack, x - 20 - 2*18, r - 3);
+                context.drawItemInSlot(this.textRenderer, goldStack, x - 20 - 2*18, r - 3);
+            }
+            if (coins.silverCoins > 0) {
+                ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, coins.silverCoins);
+                context.drawItem(silverStack, x - 20 - 18, r - 3);
+                context.drawItemInSlot(this.textRenderer, silverStack, x - 20 - 18, r - 3);
+            }
+            if (coins.bronzeCoins > 0) {
+                ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, coins.bronzeCoins);
+                context.drawItem(bronzeStack, x - 20, r - 3);
+                context.drawItemInSlot(this.textRenderer, bronzeStack, x - 20, r - 3);
+            }
         }
     }
 
@@ -405,7 +470,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         int forgetButtonY = this.y + 45;
         int waystoneButtonX = this.x + 36;
         int waystoneButtonY = this.y + 40;
-        int adjustedScrollOffset = this.scrollOffset + 5;
+        int adjustedScrollOffset = this.scrollOffset + maxLineNumber;
 
         int n = getDiscoveredCount();
         for (int currentWaystone = this.scrollOffset; currentWaystone < adjustedScrollOffset && currentWaystone < n; ++currentWaystone) {
@@ -427,7 +492,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
             if (handler instanceof WaystoneBlockScreenHandler waystoneBlockScreenHandler && waystoneBlockScreenHandler.getWaystone().equals(getDiscoveredWaystones().get(currentWaystone))) {
                 continue;
             }
-            if (waystoneButtonStartX >= 0.0D && waystoneButtonStartY >= 0.0D && waystoneButtonStartX < 101.0D && waystoneButtonStartY < 18.0D && (this.handler).onButtonClick(this.client.player, currentWaystone * 2)) {
+            if (waystoneButtonStartX >= 0.0D && waystoneButtonStartY >= 0.0D && waystoneButtonStartX < 158.0D && waystoneButtonStartY < 18.0D && (this.handler).onButtonClick(this.client.player, currentWaystone * 2)) {
                 MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, 1.0F));
 
                 ClientPlayNetworking.send(new WaystoneGUISlotClickPacket(handler.syncId, currentWaystone * 2));
@@ -474,11 +539,11 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
     }
 
     protected boolean shouldScroll() {
-        return getDiscoveredCount() > 5;
+        return getDiscoveredCount() > maxLineNumber;
     }
 
     protected int getMaxScroll() {
-        return getDiscoveredCount() - 5;
+        return getDiscoveredCount() - maxLineNumber;
     }
 
     protected int getDiscoveredCount() {
