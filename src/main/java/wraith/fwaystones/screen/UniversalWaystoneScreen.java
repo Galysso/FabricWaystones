@@ -2,6 +2,7 @@ package wraith.fwaystones.screen;
 
 import com.glisco.numismaticoverhaul.ModComponents;
 import com.glisco.numismaticoverhaul.item.NumismaticOverhaulItems;
+import galysso.codicraft.numismaticutils.Utils.NumismaticDraw;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -20,17 +21,13 @@ import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
 import wraith.fwaystones.FabricWaystones;
 import wraith.fwaystones.access.PlayerEntityMixinAccess;
-import wraith.fwaystones.block.WaystoneBlockEntity;
 import wraith.fwaystones.packets.SyncPlayerFromClientPacket;
 import wraith.fwaystones.packets.WaystoneGUISlotClickPacket;
 import wraith.fwaystones.util.FWConfigModel;
-import wraith.fwaystones.util.NumismaticUtils;
 import wraith.fwaystones.util.Utils;
 
 import java.util.ArrayList;
@@ -55,7 +52,8 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         this.inventory = inventory;
         this.backgroundWidth = 234;
         this.backgroundHeight = 176;
-        buttons.add(new Button(139, 16, 13, 13, 234, 120) {
+        // Button to toggle the search type
+        buttons.add(new Button(136, 16, 13, 13, 234, 120) {
             @Override
             public void onClick() {
                 if (!isVisible()) {
@@ -187,7 +185,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         context.drawTexture(texture, x + 198, y + 31 + k, 234 + (this.shouldScroll() ? 0 : 11), 0, 11, 15);
         int n = this.scrollOffset + maxLineNumber;
         // TODO: Merge some of these
-        this.renderNumismaticBalance(context, this.x + 154, this.y + 5);
+        NumismaticDraw.renderBalance(context, textRenderer, this.x + 152, this.y + 10, ModComponents.CURRENCY.get(inventory.player).getValue(), 0xFFFFFF, true, 0, false, true);
         this.renderForgetButtons(context, mouseX, mouseY, this.x + 24, this.y + 36);
         renderButtons(context, mouseX, mouseY);
         this.renderCostItem(context, this.x + 23, this.y + 127);
@@ -235,7 +233,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
             int s = this.backgroundHeight;
 
             // Check whether the player has the balance
-            final boolean playerHasBalance = playerBalance >= cost;
+            final boolean playerHasBalance = playerBalance >= cost || inventory.player.isCreative() || inventory.player.isSpectator();
 
             // Display background
             if (Objects.equals(originHash, destinationHash) || !playerHasBalance) {
@@ -247,7 +245,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
 
             // Display name
             String name = FabricWaystones.WAYSTONE_STORAGE.getName(waystones.get(n));
-            context.drawText(textRenderer, name, x + 4, r + 4, 0x161616, false);
+            context.drawText(textRenderer, name, x + 2, r + 4, 0x161616, false);
 
             // Skip cost if the waystone is the same as the origin or if Numismatic is not used
             if (!useNumismatic || Objects.equals(originHash, destinationHash)) {
@@ -257,40 +255,8 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
             // Get the cost color based on the player's balance
             var colorCostDigits = playerHasBalance ? 0xEEEEEE : 0xE06666;
 
-            // Get the number of each coins
-            NumismaticUtils.CoinsTuple coins = NumismaticUtils.convertCostToCoins(cost);
-
-            // Base rendering positions for costs
-            int costHorizontalOffset = 138;
-            int costVerticalOffset = -1;
-            int costDigitsHorizontalOffset = 5;
-            int costDigitsVerticalOffset = 9;
-
-            // Display costs
-            if (coins.goldCoins > 0) {
-                ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
-                context.drawItem(goldStack, x + costHorizontalOffset - 2*18, r + costVerticalOffset);
-                context.getMatrices().push();
-                context.getMatrices().translate(0.0, 0.0, 200.0);
-                context.drawText(this.textRenderer, Text.literal(Long.toString(coins.goldCoins)), x + costHorizontalOffset + costDigitsHorizontalOffset - 2*18, r + costVerticalOffset + costDigitsVerticalOffset, colorCostDigits, false);
-                context.getMatrices().pop();
-            }
-            if (coins.silverCoins > 0) {
-                ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, (int) coins.silverCoins);
-                context.drawItem(silverStack, x + costHorizontalOffset - 18, r + costVerticalOffset);
-                context.getMatrices().push();
-                context.getMatrices().translate(0.0, 0.0, 200.0);
-                context.drawText(this.textRenderer, Text.literal(Long.toString(coins.silverCoins)), x + costHorizontalOffset + costDigitsHorizontalOffset - 18, r + costVerticalOffset + costDigitsVerticalOffset, colorCostDigits, false);
-                context.getMatrices().pop();
-            }
-            if (coins.bronzeCoins > 0) {
-                ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, (int) coins.bronzeCoins);
-                context.drawItem(bronzeStack, x + costHorizontalOffset, r + costVerticalOffset);
-                context.getMatrices().push();
-                context.getMatrices().translate(0.0, 0.0, 200.0);
-                context.drawText(this.textRenderer, Text.literal(Long.toString(coins.bronzeCoins)), x + costHorizontalOffset + costDigitsHorizontalOffset, r + costVerticalOffset + costDigitsVerticalOffset, colorCostDigits, false);
-                context.getMatrices().pop();
-            }
+            // Render cost
+            NumismaticDraw.renderBalance(context, textRenderer, this.x + 137, r - 1, cost, colorCostDigits, true, 0, false, true);
         }
     }
 
@@ -305,7 +271,7 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
     }
 
     protected void renderBalanceTooltip(DrawContext context, int mouseX, int mouseY) {
-        if (mouseX >= this.x + 153 && mouseX <= this.x + 209 && mouseY >= this.y + 5 && mouseY <= this.y + 20) {
+        if (mouseX >= this.x + 150 && mouseX <= this.x + 209 && mouseY >= this.y + 9 && mouseY <= this.y + 28) {
             context.drawTooltip(textRenderer, Text.translatable("numismatic.current_balance"), mouseX, mouseY);
         }
     }
@@ -449,54 +415,6 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
         }
     }
 
-    /*
-    int costHorizontalOffset = 138;
-            int costVerticalOffset = -1;
-            int costDigitsHorizontalOffset = 5;
-            int costDigitsVerticalOffset = 9;
-
-            // Display costs
-            if (coins.goldCoins > 0) {
-                ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
-                context.drawItem(goldStack, x + costHorizontalOffset - 2*18, r + costVerticalOffset);
-                context.getMatrices().push();
-                context.getMatrices().translate(0.0, 0.0, 200.0);
-                context.drawText(this.textRenderer, Text.literal(Long.toString(coins.goldCoins)), x + costHorizontalOffset + costDigitsHorizontalOffset - 2*18, r + costVerticalOffset + costDigitsVerticalOffset, colorCostDigits, false);
-                context.getMatrices().pop();
-            }
-     */
-
-    protected void renderNumismaticBalance(DrawContext context, int x, int y) {
-        int costDigitsHorizontalOffset = 5;
-        int costDigitsVerticalOffset = 9;
-        long balance = ModComponents.CURRENCY.get(inventory.player).getValue();
-        NumismaticUtils.CoinsTuple coins = NumismaticUtils.convertCostToCoins(balance);
-        if (coins.goldCoins > 0) {
-            ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
-            context.drawItem(goldStack, x, y);
-            context.getMatrices().push();
-            context.getMatrices().translate(0.0, 0.0, 200.0);
-            context.drawText(this.textRenderer, Text.literal(Long.toString(coins.goldCoins)), x + costDigitsHorizontalOffset, y + costDigitsVerticalOffset, 0xEEEEEE, false);
-            context.getMatrices().pop();
-        }
-        if (coins.silverCoins > 0) {
-            ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, (int) coins.silverCoins);
-            context.drawItem(silverStack, x + 18, y);
-            context.getMatrices().push();
-            context.getMatrices().translate(0.0, 0.0, 200.0);
-            context.drawText(this.textRenderer, Text.literal(Long.toString(coins.silverCoins)), x + costDigitsHorizontalOffset + 18, y + costDigitsVerticalOffset, 0xEEEEEE, false);
-            context.getMatrices().pop();
-        }
-        if (coins.bronzeCoins > 0) {
-            ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, (int) coins.bronzeCoins);
-            context.drawItem(bronzeStack, x + 2*18, y);
-            context.getMatrices().push();
-            context.getMatrices().translate(0.0, 0.0, 200.0);
-            context.drawText(this.textRenderer, Text.literal(Long.toString(coins.bronzeCoins)), x + costDigitsHorizontalOffset + 2*18, y + costDigitsVerticalOffset, 0xEEEEEE, false);
-            context.getMatrices().pop();
-        }
-    }
-
     protected void renderWaystoneTooltips(DrawContext context, int mouseX, int mouseY, int x, int y, int m) {
         ArrayList<String> waystones = getDiscoveredWaystones();
         for (int n = this.scrollOffset; n < m && n < getDiscoveredCount(); ++n) {
@@ -541,44 +459,6 @@ public class UniversalWaystoneScreen extends HandledScreen<ScreenHandler> {
 
             String name = FabricWaystones.WAYSTONE_STORAGE.getName(waystones.get(n));
             context.drawText(textRenderer, name, x + 4, r + 4, 0x161616, false);
-        }
-    }
-
-    protected void renderWaystoneCosts(DrawContext context, int x, int y, int m) {
-        if (FabricWaystones.WAYSTONE_STORAGE == null)
-            return;
-
-        String originHash = "";
-        if (this.handler instanceof WaystoneBlockScreenHandler) {
-            originHash = ((WaystoneBlockScreenHandler) this.handler).getWaystone();
-        }
-        ArrayList<String> waystones = getDiscoveredWaystones();
-        for (int n = this.scrollOffset; n < m && n < waystones.size(); ++n) {
-            int o = n - this.scrollOffset;
-            int r = y + o * 18 + 3;
-
-            var destinationHash = waystones.get(n);
-
-            if (Objects.equals(originHash, destinationHash)) {
-                continue;
-            }
-            int cost = Utils.getCostWrapper(client.player, originHash, destinationHash);
-            NumismaticUtils.CoinsTuple coins = NumismaticUtils.convertCostToCoins(cost);
-            if (coins.goldCoins > 0) {
-                ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
-                context.drawItem(goldStack, x - 20 - 2*18, r - 3);
-                context.drawItemInSlot(this.textRenderer, goldStack, x - 20 - 2*18, r - 3);
-            }
-            if (coins.silverCoins > 0) {
-                ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, (int) coins.silverCoins);
-                context.drawItem(silverStack, x - 20 - 18, r - 3);
-                context.drawItemInSlot(this.textRenderer, silverStack, x - 20 - 18, r - 3);
-            }
-            if (coins.bronzeCoins > 0) {
-                ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, (int) coins.bronzeCoins);
-                context.drawItem(bronzeStack, x - 20, r - 3);
-                context.drawItemInSlot(this.textRenderer, bronzeStack, x - 20, r - 3);
-            }
         }
     }
 

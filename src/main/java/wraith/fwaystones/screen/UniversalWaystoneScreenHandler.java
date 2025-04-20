@@ -191,7 +191,6 @@ public abstract class UniversalWaystoneScreenHandler extends ScreenHandler {
         playerAccess.fabricWaystones$setSearchType(searchValues[(searchType.ordinal() + 1) % searchValues.length]);
         filterWaystones();
     }
-
     public Text getSearchTypeTooltip() {
         return Text.translatable("fwaystones.gui." + (((PlayerEntityMixinAccess) player).fabricWaystones$getSearchType().name().toLowerCase()));
     }
