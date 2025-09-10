@@ -170,6 +170,6 @@
   "text.config.fwaystones/config.option.teleportation_cost.cost_type.value.experience": "Experience",
   "text.config.fwaystones/config.option.teleportation_cost.cost_type.value.item": "Item",
   "text.config.fwaystones/config.option.teleportation_cost.cost_type.value.none": "Free",
-  "fwaystones.no_teleport.numismatic": "You do not have enough money to travel",
+  "fwaystones.no_teleport.numismatic": "You do not have enough money to travel this far",
   "numismatic.current_balance": "Current balance"
 }

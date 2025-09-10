@@ -57,6 +57,8 @@ dependencies {
 
     // Helper for rendering Numismatic balance
     modImplementation "com.example:NumismaticUtils:1.0.0"
+
+    modImplementation "maven.modrinth:lithostitched:${project.lithostitched_version}"
 }
 
 loom {

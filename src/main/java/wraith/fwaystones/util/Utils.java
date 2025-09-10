@@ -1,7 +1,10 @@
 package wraith.fwaystones.util;
 
 import com.glisco.numismaticoverhaul.ModComponents;
+import com.glisco.numismaticoverhaul.item.NumismaticOverhaulItems;
 import com.mojang.datafixers.util.Pair;
+import net.fabricmc.loader.api.FabricLoader;
+import galysso.codicraft.numismaticutils.Utils.NumismaticUtils;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Item;
@@ -22,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 import wraith.fwaystones.FabricWaystones;
 import wraith.fwaystones.block.WaystoneBlockEntity;
 import wraith.fwaystones.mixin.StructurePoolAccessor;
+import wraith.fwaystones.integration.lithostitched.LithostitchedPlugin;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -82,9 +86,9 @@ public final class Utils {
 
     public static void addToStructurePool(MinecraftServer server, Identifier village, Identifier waystone, int weight) {
 
-        RegistryEntry<StructureProcessorList> emptyProcessorList = server.getRegistryManager()
+        /*RegistryEntry<StructureProcessorList> emptyProcessorList = server.getRegistryManager()
             .get(RegistryKeys.PROCESSOR_LIST)
-            .entryOf(EMPTY_PROCESSOR_LIST_KEY);
+            .entryOf(EMPTY_PROCESSOR_LIST_KEY);*/
 
         var poolGetter = server.getRegistryManager()
             .get(RegistryKeys.TEMPLATE_POOL)
@@ -96,15 +100,33 @@ public final class Utils {
         }
         var pool = poolGetter.get();
 
-        var pieceList = ((StructurePoolAccessor) pool).getElements();
-        var piece = StructurePoolElement.ofProcessedSingle(waystone.toString(), emptyProcessorList).apply(StructurePool.Projection.RIGID);
+        //var pieceList = ((StructurePoolAccessor) pool).getElements();
+        //var piece = StructurePoolElement.ofProcessedSingle(waystone.toString(), emptyProcessorList).apply(StructurePool.Projection.RIGID);
 
-        var list = new ArrayList<>(((StructurePoolAccessor) pool).getElementCounts());
-        list.add(Pair.of(piece, weight));
-        ((StructurePoolAccessor) pool).setElementCounts(list);
+        if (FabricLoader.getInstance().isModLoaded("lithostitched")) {
+            var pieces = LithostitchedPlugin.createPieces(waystone.toString());
+            for (StructurePoolElement piece : pieces) {
+                addPieceToPool(piece, ((StructurePoolAccessor)pool), weight);
+            }
+        } else {
+            var piece = StructurePoolElement.ofSingle(waystone.toString()).apply(StructurePool.Projection.RIGID);
+            addPieceToPool(piece, ((StructurePoolAccessor)pool), weight);
+        }
+    }
+
+        //var list = new ArrayList<>(((StructurePoolAccessor) pool).getElementCounts());
+        //list.add(Pair.of(piece, weight));
+        //((StructurePoolAccessor) pool).setElementCounts(list);
+
+    private static void addPieceToPool(StructurePoolElement element, StructurePoolAccessor accessor, int weight) {
+        var pieceList = accessor.getElements();
+        var list = new ArrayList<>(accessor.getElementCounts());
+        list.add(Pair.of(element, weight));
+        accessor.setElementCounts(list);
 
         for (int i = 0; i < weight; ++i) {
-            pieceList.add(piece);
+            //pieceList.add(piece);
+            pieceList.add(element);
         }
     }
 
@@ -186,6 +208,47 @@ public final class Utils {
                 if (amount <= ModComponents.CURRENCY.get(player).getValue()) {
                     if (takeCost) {
                         ModComponents.CURRENCY.get(player).modify(-amount);
+                        /*if (player.getWorld().isClient || FabricWaystones.WAYSTONE_STORAGE == null) {
+                            return true;
+                        }
+                        var waystoneBE = waystone.getEntity();
+                        if (waystoneBE == null) {
+                            return true;
+                        }
+                        NumismaticUtils.CoinsTuple coins = NumismaticUtils.convertCostToCoins(amount);
+                        ArrayList<ItemStack> waystoneInventory = new ArrayList<>(waystoneBE.getInventory());
+                        ItemStack bronzeStack = new ItemStack(NumismaticOverhaulItems.BRONZE_COIN, (int) coins.bronzeCoins);
+                        ItemStack silverStack = new ItemStack(NumismaticOverhaulItems.SILVER_COIN, (int) coins.silverCoins);
+                        ItemStack goldStack = new ItemStack(NumismaticOverhaulItems.GOLD_COIN, (int) coins.goldCoins);
+                        for (ItemStack stack : waystoneInventory) {
+                            if (stack.getItem() == NumismaticOverhaulItems.BRONZE_COIN) {
+                                bronzeStack.increment(stack.getCount());
+                            } else if (stack.getItem() == NumismaticOverhaulItems.SILVER_COIN) {
+                                silverStack.increment(stack.getCount());
+                            } else if (stack.getItem() == NumismaticOverhaulItems.GOLD_COIN) {
+                                goldStack.increment(stack.getCount());
+                            }
+                        }
+                        if (bronzeStack.getCount() >= 100) {
+                            bronzeStack.setCount(bronzeStack.getCount() - 100);
+                            silverStack.increment(1);
+                        }
+                        if (silverStack.getCount() >= 100) {
+                            silverStack.setCount(silverStack.getCount() - 100);
+                            goldStack.increment(1);
+                        }
+                        ArrayList<ItemStack> newInventory = new ArrayList<>();
+                        if (goldStack.getCount() > 0) {
+                            newInventory.add(goldStack);
+                        }
+                        if (silverStack.getCount() > 0) {
+                            newInventory.add(silverStack);
+                        }
+                        if (bronzeStack.getCount() > 0) {
+                            newInventory.add(bronzeStack);
+                        }
+
+                        waystoneBE.setInventory(newInventory);*/
                     }
                     return true;
                 } else {
